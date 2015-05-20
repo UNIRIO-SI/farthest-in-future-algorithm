@@ -27,10 +27,12 @@ public class FFAApplication extends Application {
 	private static final int N = 5;
 
 	private int i = 0;
+	private int j = 1;
+	private int l = 0;
 
 	private Debugger debugger;
 	private FFAnimation ffAnimation;
-	
+
 	private boolean end = false;
 
 	public FFAApplication(int w, int h) {
@@ -71,9 +73,9 @@ public class FFAApplication extends Application {
 	public void draw(Graphic g) {
 
 		g.setColor(Color.BLACK);
-		
+
 		drawVariables(g);
-		
+
 		debugger.draw(g, 32, 50-14);
 
 		//Offset in (50, 50)
@@ -91,16 +93,23 @@ public class FFAApplication extends Application {
 
 	private void drawVariables(Graphic g) {
 		g.drawString("i = "+Integer.toString(i), w/2+30, 46);
-		
+
 		if(!end) {
 			g.drawString("r[i] = "+Integer.toString(request[i]), w/2+30, 66);
 		}
-		
+
 		if(debugger.getLine() >= 9) {
 			g.drawString("max_dist = "+Integer.toString(maxDist), w/2+30, 86);
 		}
 		if(debugger.getLine() >= 10) {
 			g.drawString("furthest = "+Integer.toString(furthest), w/2+30, 106);
+		}
+		if(debugger.getLine() >= 11) {
+			g.drawString("j = "+Integer.toString(j), w/2+30, 126);
+		}
+
+		if(debugger.getLine() >= 12) {
+			g.drawString("l = "+Integer.toString(l), w/2+30, 146);
 		}
 	}
 
@@ -143,7 +152,7 @@ public class FFAApplication extends Application {
 			if(!end) {
 				debugger.nextLine();	
 			}
-			
+
 		}
 		if(event.isKeyUp(KeyEvent.TSK_UP_ARROW)) {
 			if(!end) {
@@ -164,20 +173,20 @@ public class FFAApplication extends Application {
 	private void executeLine(int line) {
 
 		switch(line) {
-		
+
 		//Verify if r is in cache
 		case 2:
 			if(!isInCache(request[i])) {
 				debugger.offsetLine(2);
 			} //else line 3
 			break;
-		//Cache hit
+			//Cache hit
 		case 3:
 			ffAnimation.animateCacheHit(requestX+CELL_WIDTH*i, requestY);			
 			nextLoop();
 			break;
-			
-		//Verify if cache is full
+
+			//Verify if cache is full
 		case 5:
 			if(cacheIsFull()) {
 				System.out.println("Full");
@@ -185,28 +194,44 @@ public class FFAApplication extends Application {
 				debugger.offsetLine(2);
 			} //else line 6
 			break;
-			
-		//Execute Put in cache
+
+			//Execute Put in cache
 		case 6:
 			putInCache(request[i]);
 			nextLoop();
-			
+
 			if(i >= request.length) {
 				//end loop
 				System.out.println("End Loop");
 				end = true;
 				debugger.offsetLine(19);
 			}
-			
+
 			break;
-			
+
 		case 8:
 			ffAnimation.animateCacheMiss(requestX+CELL_WIDTH*i, requestY);
 			break;
+
+		case 11:
+			j = 1;
+			break;
+		case 12:
+			l = i+1;
+			break;
+		case 14:
+			if(request[i] != cache[j]) {
+				l++;
+				debugger.offsetLine(-2);
+			} else {
+				debugger.offsetLine(1);
+			}
+			break;
 		}
 
+
 	}
-	
+
 	private void nextLoop() {
 		i++;
 		debugger.setLine(1);
@@ -227,8 +252,8 @@ public class FFAApplication extends Application {
 				"        else",
 				"            \"cache miss\"",
 				"            max_dist = 0",
-				"            furthest = cache[j]",
-				"            for j = 1 to k do",
+				"            furthest = 0",
+				"            for j = 1 to cache.length() do",
 				"                l = i + 1",
 				"                    while r[i] != cache[j] do",
 				"                        l = l+1",
