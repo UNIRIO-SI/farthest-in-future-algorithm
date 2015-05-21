@@ -1,6 +1,9 @@
 package ffa;
 
 import java.awt.Color;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 
 import br.com.etyllica.context.Application;
 import br.com.etyllica.core.event.GUIEvent;
@@ -10,25 +13,26 @@ import br.com.etyllica.core.graphics.SVGColor;
 
 public class FFAApplication extends Application {
 
-	private int[] cache;
+	private List<Integer> cache;
+	private List<Integer> dist;
 	private int cacheUse = 0;
-	private int maxDist = 0;
 	private int furthest = 0;
 
 	private int[] request;
 	private int requestX;
 	private int requestY = 160;
 
-	private static final int K = 3;
+	private static final int INFINITY = 10000;
 
-	private static final int CELL_WIDTH = 32;
-	private static final int CELL_HEIGHT = 48;
+	private static final int CELL_WIDTH = 48;
+	private static final int CELL_HEIGHT = 64;
 
-	private static final int N = 5;
+	private static final int K = 3; //Cache Size
+	private static final int N = 6; //Request Size
 
 	private int i = 0;
 	private int j = 1;
-	private int l = 0;
+	private int p = 0;
 
 	private Debugger debugger;
 	private FFAnimation ffAnimation;
@@ -48,7 +52,9 @@ public class FFAApplication extends Application {
 
 		ffAnimation = new FFAnimation();
 
-		cache = new int[K];
+		cache = new ArrayList<Integer>(K);
+		
+		dist = new ArrayList<Integer>(Collections.nCopies(K, -1));
 
 		request = new int[N];
 		request[0] = 40;
@@ -56,6 +62,7 @@ public class FFAApplication extends Application {
 		request[2] = 3;
 		request[3] = 8;
 		request[4] = 10;
+		request[5] = 19;
 
 		requestX = w/2+100;
 
@@ -63,10 +70,8 @@ public class FFAApplication extends Application {
 	}
 
 	private void putInCache(int value) {
-		if(cacheUse < cache.length) {
-			cache[cacheUse] = value;
-			cacheUse++;
-		}
+		cache.add(value);
+		cacheUse++;
 	}
 
 	@Override
@@ -86,7 +91,9 @@ public class FFAApplication extends Application {
 
 		drawRequest(g, requestX, requestY, request);
 
-		drawCache(g, w/2+150, 260, cache);
+		drawCache(g, w/2+150, 260, cache, "Cache");
+		
+		drawDist(g, w/2+150, 380, dist, "Dist");
 
 		ffAnimation.draw(g);
 	}
@@ -99,18 +106,15 @@ public class FFAApplication extends Application {
 		}
 
 		if(debugger.getLine() >= 9) {
-			g.drawString("max_dist = "+Integer.toString(maxDist), w/2+30, 86);
+			g.drawString("furthest = "+Integer.toString(furthest), w/2+30, 86);
 		}
 		if(debugger.getLine() >= 10) {
-			g.drawString("furthest = "+Integer.toString(furthest), w/2+30, 106);
+			g.drawString("j = "+Integer.toString(j), w/2+30, 106);
 		}
 		if(debugger.getLine() >= 11) {
-			g.drawString("j = "+Integer.toString(j), w/2+30, 126);
+			g.drawString("p = "+Integer.toString(p), w/2+30, 126);
 		}
 
-		if(debugger.getLine() >= 12) {
-			g.drawString("l = "+Integer.toString(l), w/2+30, 146);
-		}
 	}
 
 	private void drawRequest(Graphic g, int x, int y, int[] request) {
@@ -131,18 +135,31 @@ public class FFAApplication extends Application {
 		g.drawString(x, y-10, w, 0, "Request");
 	}
 
-	private void drawCache(Graphic g, int x, int y, int[] cache) {
+	private void drawCache(Graphic g, int x, int y, List<Integer> cache, String label) {
 
 		//Draw cache cells
-		for(int i=0; i<cache.length; i++) {
+		for(int i=0; i < K; i++) {
 			g.drawRect(x+CELL_WIDTH*i, y, CELL_WIDTH, CELL_HEIGHT);
 			if(i < cacheUse) {
-				g.drawString(x+CELL_WIDTH*i, y, CELL_WIDTH, CELL_HEIGHT, Integer.toString(cache[i]));
+				g.drawString(x+CELL_WIDTH*i, y, CELL_WIDTH, CELL_HEIGHT, Integer.toString(cache.get(i)));
 			}
 		}
 
-		int w = cache.length*CELL_WIDTH;
-		g.drawString(x, y-10, w, 0, "Cache");
+		int w = K*CELL_WIDTH;
+		g.drawString(x, y-10, w, 0, label);
+
+	}
+	
+	private void drawDist(Graphic g, int x, int y, List<Integer> cache, String label) {
+
+		//Draw cache cells
+		for(int i=0; i<cache.size(); i++) {
+			g.drawRect(x+CELL_WIDTH*i, y, CELL_WIDTH, CELL_HEIGHT);
+			g.drawString(x+CELL_WIDTH*i, y, CELL_WIDTH, CELL_HEIGHT, Integer.toString(cache.get(i)));
+		}
+
+		int w = cache.size()*CELL_WIDTH;
+		g.drawString(x, y-10, w, 0, label);
 
 	}
 
@@ -179,6 +196,8 @@ public class FFAApplication extends Application {
 			if(!isInCache(request[i])) {
 				debugger.offsetLine(2);
 			} //else line 3
+			
+			//drawArrow()
 			break;
 			//Cache hit
 		case 3:
@@ -189,7 +208,6 @@ public class FFAApplication extends Application {
 			//Verify if cache is full
 		case 5:
 			if(cacheIsFull()) {
-				System.out.println("Full");
 				//Cache is full
 				debugger.offsetLine(2);
 			} //else line 6
@@ -199,46 +217,85 @@ public class FFAApplication extends Application {
 		case 6:
 			putInCache(request[i]);
 			nextLoop();
-
-			if(i >= request.length) {
-				//end loop
-				System.out.println("End Loop");
-				end = true;
-				debugger.offsetLine(19);
-			}
-
 			break;
 
 		case 8:
 			ffAnimation.animateCacheMiss(requestX+CELL_WIDTH*i, requestY);
 			break;
-
-		case 11:
+		case 9:
+			furthest = 0;
+			break;			
+		case 10:
 			j = 1;
 			break;
-		case 12:
-			l = i+1;
+		case 11:
+			p = i+1;
+			break;
+		case 12:			
+			if(p >= K)
+				debugger.offsetLine(4);
 			break;
 		case 14:
-			if(request[i] != cache[j]) {
-				l++;
+			if(request[p] != cache.get(j)) {
+				System.out.println("r[p] = "+request[p]);
+				p++;
 				debugger.offsetLine(-2);
 			} else {
 				debugger.offsetLine(1);
 			}
 			break;
+		case 15:
+			debugger.offsetLine(2);
+			break;
+		case 17:
+			if(p!=N) {
+				debugger.offsetLine(2);
+			}
+			break;
+		case 18:
+			//dist[j] = Infinity
+			dist.set(j, INFINITY);
+			debugger.offsetLine(3);
+			break;
+		case 20:
+			//dist[j] = p-1
+			dist.set(j, p - 1);
+			break;
+		case 21:
+			if(dist.get(j)<=dist.get(furthest)) {
+				debugger.offsetLine(2);
+			}
+			break;
+		case 22:
+			furthest = j;
+			break;
+		case 23:
+			cache.remove(furthest);
+			cacheUse--;
+			break;
+		case 24:
+			putInCache(request[i]);
+			nextLoop();
+			break;
+			
 		}
-
-
 	}
 
 	private void nextLoop() {
 		i++;
-		debugger.setLine(1);
+		
+		if(i < request.length) {
+			debugger.setLine(1);
+		} else {
+			//end loop
+			System.out.println("End Loop");
+			end = true;
+			debugger.offsetLine(25);//Last Line
+		}
 	}
 
 	private boolean cacheIsFull() {
-		return cacheUse == cache.length;
+		return cacheUse == K;
 	}
 
 	private String[] buildPseudoCode() {
@@ -251,31 +308,34 @@ public class FFAApplication extends Application {
 				"            put r[i] in cache",
 				"        else",
 				"            \"cache miss\"",
-				"            max_dist = 0",
 				"            furthest = 0",
-				"            for j = 1 to cache.length() do",
-				"                l = i + 1",
-				"                    while r[i] != cache[j] do",
-				"                        l = l+1",
-				"                    dist[j] = l-i",
-				"                    if dist[j] > max_dist then",
-				"                        furthest = cache[j]",
-				"                        max_dist = dist[j]",
-				"            evict furthest and put r[i] in cache",
+				"            for j = 1 to k do",
+				"                p = i + 1",
+				"                    while p < k do",
+				"                        if (r[p] != cache[j])",
+				"                            p = p + 1",
+				"                        else",
+				"                            break;",
+				"                    if p == n",
+				"                        dist[j] = 10000; //Infinity",
+				"                    else",
+				"                        dist[j] = p - 1",
+				"                    if(distance[j] > distance[furthest])",
+				"                        furthest = j",
+				"                    cache.pop(furthest)",
+				"                    cache.append(r[i])",
 				"end"
 		};
 
 		return sentences;
 	}
 
-
-
 	private boolean isInCache(int value) {
 
 		boolean result = false;
 
 		for(int c = 0; c < cacheUse; c++) {
-			if(value == cache[c]) {
+			if(value == cache.get(c)) {
 				result = true;
 			}
 		}
