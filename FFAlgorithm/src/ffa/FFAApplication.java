@@ -44,6 +44,9 @@ public class FFAApplication extends Application {
 	private Point2D originArrow;
 	private Point2D endArrow;
 	private boolean drawArrow = false;
+	
+	private int highlightDist = -1;
+	private int highlightCache = -1;
 
 	private boolean end = false;
 
@@ -61,20 +64,11 @@ public class FFAApplication extends Application {
 		ffAnimation = new FFAnimation();
 
 		cache = new ArrayList<Integer>(K);
-		/*putInCache(9);
-		putInCache(2);
-		putInCache(3);*/
-		
+				
 		resetDist();
 
 		request = new int[N];
-		/*request[0] = 40;
-		request[1] = 3;
-		request[2] = 3;
-		request[3] = 8;
-		request[4] = 10;
-		request[5] = 19;*/
-		
+				
 		// 1,2,4,1,4,3,2,4,1,2,1,4,3,1,3,2
 		request[0] = 1;
 		request[1] = 2;
@@ -104,9 +98,10 @@ public class FFAApplication extends Application {
 		dist = new ArrayList<Integer>(Collections.nCopies(K, -1));
 	}
 
-	private void putInCache(int value) {
+	private int putInCache(int value) {
 		cache.add(value);
 		cacheUse++;
+		return cacheUse-1;
 	}
 
 	@Override
@@ -176,6 +171,11 @@ public class FFAApplication extends Application {
 
 		//Draw cache cells
 		for(int i=0; i < K; i++) {
+			g.setColor(SVGColor.BEIGE);
+			if(highlightCache == i) {
+				g.fillRect(x+CELL_WIDTH*i, y, CELL_WIDTH, CELL_HEIGHT);	
+			}
+			g.setColor(SVGColor.BLACK);
 			g.drawRect(x+CELL_WIDTH*i, y, CELL_WIDTH, CELL_HEIGHT);
 			if(i < cacheUse) {
 				g.drawString(x+CELL_WIDTH*i, y, CELL_WIDTH, CELL_HEIGHT, Integer.toString(cache.get(i)));
@@ -191,6 +191,11 @@ public class FFAApplication extends Application {
 
 		//Draw cache cells
 		for(int i=0; i<cache.size(); i++) {
+			if(highlightDist == i) {
+				g.setColor(SVGColor.BEIGE);
+				g.fillRect(x+CELL_WIDTH*i, y, CELL_WIDTH, CELL_HEIGHT);
+				g.setColor(SVGColor.BLACK);
+			}
 			g.drawRect(x+CELL_WIDTH*i, y, CELL_WIDTH, CELL_HEIGHT);
 			g.drawString(x+CELL_WIDTH*i, y, CELL_WIDTH, CELL_HEIGHT, Integer.toString(cache.get(i)));
 		}
@@ -219,12 +224,15 @@ public class FFAApplication extends Application {
 				executeLine(debugger.getLine());
 			}
 		}
-
 		return null;
 	}
 
 	private void executeLine(int line) {
 
+		//Reset highlight
+		highlightDist = -1;
+		highlightCache = -1;
+		
 		switch(line) {
 
 		//Verify if r is in cache
@@ -236,6 +244,7 @@ public class FFAApplication extends Application {
 			} else {
 				//cache hit
 				drawHitArrow(index);
+				highlightCache = index;
 			}
 			//drawArrow()
 			break;
@@ -256,7 +265,7 @@ public class FFAApplication extends Application {
 
 			//Execute Put in cache
 		case 6:
-			putInCache(request[i]);
+			highlightCache = putInCache(request[i]);
 			nextLoop();
 			break;
 		case 8:
@@ -271,6 +280,7 @@ public class FFAApplication extends Application {
 			//If j>K exit loop
 			if(j >= K) {
 				debugger.offsetLine(12);
+				highlightCache = furthest;
 			}
 			break;
 		case 11:
@@ -299,6 +309,7 @@ public class FFAApplication extends Application {
 		case 18:
 			//dist[j] = Infinity
 			dist.set(j, INFINITY);
+			highlightDist = j;
 			debugger.offsetLine(2);
 			break;
 		case 20:
@@ -307,6 +318,7 @@ public class FFAApplication extends Application {
 			break;
 		case 21:
 			if(dist.get(j)>dist.get(furthest)) {
+				highlightDist = j;
 				furthest = j;
 			} else {
 				j++;
