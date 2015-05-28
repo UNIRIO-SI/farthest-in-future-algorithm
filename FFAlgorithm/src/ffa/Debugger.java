@@ -7,7 +7,7 @@ import br.com.etyllica.core.graphics.SVGColor;
 
 public class Debugger {
 
-	private int w, h;
+	private int h;
 	
 	private int debuggerLine = 0;
 	
@@ -15,11 +15,14 @@ public class Debugger {
 	
 	private String[] code;
 	
+	public int division;
+	
 	public Debugger(int w, int h, String[] code) {
 		super();
-		this.w = w;
 		this.h = h;
 		this.code = code;
+		
+		division = w/2-150;
 	}
 
 	public void draw(Graphic g, int x, int y) {
@@ -28,7 +31,7 @@ public class Debugger {
 
 		//Fill debugger line
 		g.setColor(SVGColor.KHAKI);
-		g.fillRect(0,  offsetY, w/2, 18);
+		g.fillRect(0,  offsetY, division, 18);
 
 		//Draw debugger ball
 		g.setColor(Color.RED);
@@ -70,7 +73,7 @@ public class Debugger {
 	}
 	
 	public void drawDivision(Graphic g, int y) {
-		g.drawLine(w/2, y, w/2, h-y);
+		g.drawLine(division, y, division, h-y);
 	}
 
 	public void setLine(int line) {
