@@ -35,7 +35,7 @@ public class FFAApplication extends Application {
 	private static final int N = 16; //Request Size
 
 	private int i = 0;
-	private int j = 1;
+	private int j = 0;
 	private int p = 0;
 
 	private Debugger debugger;
@@ -265,7 +265,7 @@ public class FFAApplication extends Application {
 		case 9:
 			furthest = 0;
 			resetDist();
-			j = 1;
+			j = 0;
 			break;
 		case 10:
 			//If j>K exit loop
@@ -282,9 +282,8 @@ public class FFAApplication extends Application {
 			break;
 		case 14:
 			if(request[p] != cache.get(j)) {
-				System.out.println("r[p] = "+request[p]);
 				p++;
-				debugger.offsetLine(-2);
+				debugger.offsetLine(-3);
 			} else {
 				debugger.offsetLine(1);
 			}
@@ -300,25 +299,27 @@ public class FFAApplication extends Application {
 		case 18:
 			//dist[j] = Infinity
 			dist.set(j, INFINITY);
-			debugger.offsetLine(3);
+			debugger.offsetLine(2);
 			break;
 		case 20:
 			//dist[j] = p-1
-			dist.set(j, p - 1);
+			dist.set(j, p-1);
 			break;
 		case 21:
-			/*if(dist.get(j)<=dist.get(furthest)) {
-				debugger.offsetLine(2);
-			}*/
+			if(dist.get(j)>dist.get(furthest)) {
+				furthest = j;
+			} else {
+				j++;
+				debugger.offsetLine(-12);	
+			}
 			break;
 		case 22:
-			furthest = j;
 			//End of for loop (back to line 10)
 			j++;
 			debugger.offsetLine(-13);
 			break;
 		case 23:
-			cache.remove(0);
+			cache.remove(furthest);
 			cacheUse--;
 			break;
 		case 24:
@@ -366,7 +367,7 @@ public class FFAApplication extends Application {
 				"        else",
 				"            \"cache miss\"",
 				"            furthest = 0",
-				"            for j = 1 to k do",
+				"            for j = 0 to k do",
 				"                p = i + 1",
 				"                while p < n do",
 				"                    if (r[p] != cache[j])",
@@ -394,8 +395,6 @@ public class FFAApplication extends Application {
 		for(int c = 0; c < cacheUse; c++) {
 			if(value == cache.get(c)) {
 				result = c;
-				System.out.println(result);
-				//break;
 			}
 		}
 
