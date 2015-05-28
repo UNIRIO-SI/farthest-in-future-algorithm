@@ -10,6 +10,7 @@ import br.com.etyllica.core.event.GUIEvent;
 import br.com.etyllica.core.event.KeyEvent;
 import br.com.etyllica.core.graphics.Graphic;
 import br.com.etyllica.core.graphics.SVGColor;
+import br.com.etyllica.linear.Point2D;
 
 public class FFAApplication extends Application {
 
@@ -21,6 +22,9 @@ public class FFAApplication extends Application {
 	private int[] request;
 	private int requestX;
 	private int requestY = 160;
+	
+	private int cacheX;
+	private int cacheY = 260;
 
 	private static final int INFINITY = 10000;
 
@@ -28,7 +32,7 @@ public class FFAApplication extends Application {
 	private static final int CELL_HEIGHT = 64;
 
 	private static final int K = 3; //Cache Size
-	private static final int N = 6; //Request Size
+	private static final int N = 16; //Request Size
 
 	private int i = 0;
 	private int j = 1;
@@ -36,6 +40,10 @@ public class FFAApplication extends Application {
 
 	private Debugger debugger;
 	private FFAnimation ffAnimation;
+	
+	private Point2D originArrow;
+	private Point2D endArrow;
+	private boolean drawArrow = false;
 
 	private boolean end = false;
 
@@ -53,20 +61,47 @@ public class FFAApplication extends Application {
 		ffAnimation = new FFAnimation();
 
 		cache = new ArrayList<Integer>(K);
+		/*putInCache(9);
+		putInCache(2);
+		putInCache(3);*/
 		
-		dist = new ArrayList<Integer>(Collections.nCopies(K, -1));
+		resetDist();
 
 		request = new int[N];
-		request[0] = 40;
+		/*request[0] = 40;
 		request[1] = 3;
 		request[2] = 3;
 		request[3] = 8;
 		request[4] = 10;
-		request[5] = 19;
+		request[5] = 19;*/
+		
+		// 1,2,4,1,4,3,2,4,1,2,1,4,3,1,3,2
+		request[0] = 1;
+		request[1] = 2;
+		request[2] = 4;
+		request[3] = 1;
+		request[4] = 4;
+		request[5] = 3;
+		request[6] = 2;
+		request[7] = 4;
+		request[8] = 1;
+		request[9] = 2;
+		request[10] = 1;
+		request[11] = 4;
+		request[12] = 3;
+		request[13] = 1;
+		request[14] = 3;
+		request[15] = 2;
 
-		requestX = w/2+100;
+		requestX = w/2+30;
+		
+		cacheX = w/2+110;
 
 		loading = 100;
+	}
+
+	protected void resetDist() {
+		dist = new ArrayList<Integer>(Collections.nCopies(K, -1));
 	}
 
 	private void putInCache(int value) {
@@ -91,11 +126,15 @@ public class FFAApplication extends Application {
 
 		drawRequest(g, requestX, requestY, request);
 
-		drawCache(g, w/2+150, 260, cache, "Cache");
+		drawCache(g, cacheX, cacheY, cache, "Cache(K="+Integer.toString(K)+")");
 		
-		drawDist(g, w/2+150, 380, dist, "Dist");
+		drawDist(g, w/2+110, 380, dist, "Dist");
 
 		ffAnimation.draw(g);
+		
+		if(drawArrow) {
+			g.drawArrow(originArrow, endArrow);
+		}
 	}
 
 	private void drawVariables(Graphic g) {
@@ -119,14 +158,12 @@ public class FFAApplication extends Application {
 
 	private void drawRequest(Graphic g, int x, int y, int[] request) {
 		//Draw request cells
-		for(int r = 0; r<request.length; r++) {
-
+		for(int r = 0; r < request.length; r++) {
 			if(r == i) {
 				g.setColor(SVGColor.GAINSBORO);
 				g.fillRect(x+CELL_WIDTH*r, y, CELL_WIDTH, CELL_HEIGHT);
 				g.setColor(SVGColor.BLACK);
 			}
-
 			g.drawRect(x+CELL_WIDTH*r, y, CELL_WIDTH, CELL_HEIGHT);
 			g.drawString(x+CELL_WIDTH*r, y, CELL_WIDTH, CELL_HEIGHT, Integer.toString(request[r]));					
 		}
@@ -169,7 +206,6 @@ public class FFAApplication extends Application {
 			if(!end) {
 				debugger.nextLine();	
 			}
-
 		}
 		if(event.isKeyUp(KeyEvent.TSK_UP_ARROW)) {
 			if(!end) {
@@ -193,15 +229,20 @@ public class FFAApplication extends Application {
 
 		//Verify if r is in cache
 		case 2:
-			if(!isInCache(request[i])) {
+			//If number is not in cache
+			int index = isInCache(request[i]); 
+			if(index < 0) {
 				debugger.offsetLine(2);
-			} //else line 3
-			
+			} else {
+				//cache hit
+				drawHitArrow(index);
+			}
 			//drawArrow()
 			break;
 			//Cache hit
 		case 3:
-			ffAnimation.animateCacheHit(requestX+CELL_WIDTH*i, requestY);			
+			ffAnimation.animateCacheHit(requestX+CELL_WIDTH*i, requestY);
+			drawArrow = false;
 			nextLoop();
 			break;
 
@@ -218,21 +259,25 @@ public class FFAApplication extends Application {
 			putInCache(request[i]);
 			nextLoop();
 			break;
-
 		case 8:
 			ffAnimation.animateCacheMiss(requestX+CELL_WIDTH*i, requestY);
 			break;
 		case 9:
 			furthest = 0;
-			break;			
-		case 10:
+			resetDist();
 			j = 1;
+			break;
+		case 10:
+			//If j>K exit loop
+			if(j >= K) {
+				debugger.offsetLine(12);
+			}
 			break;
 		case 11:
 			p = i+1;
 			break;
-		case 12:			
-			if(p >= K)
+		case 12:
+			if(p >= N)
 				debugger.offsetLine(4);
 			break;
 		case 14:
@@ -262,15 +307,18 @@ public class FFAApplication extends Application {
 			dist.set(j, p - 1);
 			break;
 		case 21:
-			if(dist.get(j)<=dist.get(furthest)) {
+			/*if(dist.get(j)<=dist.get(furthest)) {
 				debugger.offsetLine(2);
-			}
+			}*/
 			break;
 		case 22:
 			furthest = j;
+			//End of for loop (back to line 10)
+			j++;
+			debugger.offsetLine(-13);
 			break;
 		case 23:
-			cache.remove(furthest);
+			cache.remove(0);
 			cacheUse--;
 			break;
 		case 24:
@@ -279,6 +327,15 @@ public class FFAApplication extends Application {
 			break;
 			
 		}
+	}
+
+	protected void drawHitArrow(int index) {
+		int ax = requestX+CELL_WIDTH/2+CELL_WIDTH*i;
+		int ex = cacheX+CELL_WIDTH/2+CELL_WIDTH*index;
+		
+		originArrow = new Point2D(ax, requestY+CELL_HEIGHT);
+		endArrow = new Point2D(ex, cacheY);
+		drawArrow = true;
 	}
 
 	private void nextLoop() {
@@ -311,32 +368,34 @@ public class FFAApplication extends Application {
 				"            furthest = 0",
 				"            for j = 1 to k do",
 				"                p = i + 1",
-				"                    while p < k do",
-				"                        if (r[p] != cache[j])",
-				"                            p = p + 1",
-				"                        else",
-				"                            break;",
-				"                    if p == n",
-				"                        dist[j] = 10000; //Infinity",
+				"                while p < n do",
+				"                    if (r[p] != cache[j])",
+				"                        p = p + 1",
 				"                    else",
-				"                        dist[j] = p - 1",
-				"                    if(distance[j] > distance[furthest])",
-				"                        furthest = j",
-				"                    cache.pop(furthest)",
-				"                    cache.append(r[i])",
+				"                        break;",
+				"                if p == n",
+				"                    dist[j] = 10000; //Infinity",
+				"                else",
+				"                    dist[j] = p - 1",
+				"                if(distance[j] > distance[furthest])",
+				"                    furthest = j",
+				"            cache.pop(furthest)",
+				"            cache.append(r[i])",
 				"end"
 		};
 
 		return sentences;
 	}
 
-	private boolean isInCache(int value) {
+	private int isInCache(int value) {
 
-		boolean result = false;
+		int result = -1;
 
 		for(int c = 0; c < cacheUse; c++) {
 			if(value == cache.get(c)) {
-				result = true;
+				result = c;
+				System.out.println(result);
+				//break;
 			}
 		}
 

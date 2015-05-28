@@ -8,7 +8,7 @@ public class Main extends EtyllicaFrame {
 	private static final long serialVersionUID = 7739713774644387495L;
 
 	public Main() {
-		super(800,600);
+		super(1024,780);
 	}
 
 	// Main program
